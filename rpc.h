@@ -17,7 +17,6 @@ class rpc_const {
   static const int unmarshal_failure = -3;
   static const int bind_failure = -4;
   static const int cancel_failure = -4;
-  static const int VIVALDI_MASK=0x40000000;
 };
 // rpc client endpoint.
 // manages a socket and an xid space.
@@ -48,7 +47,7 @@ class rpcc {
 
   // map xid of awaited reply to waiting thread in call().
   struct caller {
-    caller(int xxid, unmarshall *un, uint32_t ip, uint16_t port, double when = 0);
+    caller(int xxid, unmarshall *un, uint32_t ip, uint16_t port);
     ~caller();
     int xid;
     unmarshall *un;
@@ -56,7 +55,6 @@ class rpcc {
     bool done;
     pthread_cond_t c;
     pthread_mutex_t m;
-    double senttime;
     uint32_t other_ip;
     uint16_t other_port;
   };

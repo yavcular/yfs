@@ -17,7 +17,7 @@ class lock_server {
  public:
   lock_server();
   ~lock_server() {};
-  lock_protocol::status stat(int clt, std::string, int &);
+  lock_protocol::status stat(int clt, lock_protocol::lockid_t lid, int &);
 };
 
 #endif 

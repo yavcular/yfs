@@ -8,9 +8,6 @@
 
 #include "rpc.h"
 #include "method_thread.h"
-#ifdef VIVALDI
-#include "vivaldi.h"
-#endif
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <strings.h>
@@ -115,8 +112,8 @@ rpcc::bind(TO to)
   return ret;
 };
 
-rpcc::caller::caller(int xxid, unmarshall *xun, uint32_t ip, uint16_t port, double when)
-  : xid(xxid), un(xun), done(false), senttime(when), other_ip(ip), other_port(port)
+rpcc::caller::caller(int xxid, unmarshall *xun, uint32_t ip, uint16_t port)
+  : xid(xxid), un(xun), done(false), other_ip(ip), other_port(port)
 {
   assert(pthread_cond_init(&c, 0) == 0);
   assert(pthread_mutex_init(&m, 0) == 0);
@@ -192,13 +189,7 @@ rpcc::call1(unsigned int proc, const marshall &req, unmarshall &rep, TO to)
   unsigned int myxid = xid++;
   marshall m1;
 
-  caller ca(myxid, &rep, dst.sin_addr.s_addr, dst.sin_port,
-#ifdef VIVALDI
-            (proc & rpc_const::VIVALDI_MASK)?vivaldi::gettime():0.0
-#else
-            0.0
-#endif
-            );
+  caller ca(myxid, &rep, dst.sin_addr.s_addr, dst.sin_port);
   calls[myxid] = &ca;
 
   // add RPC fields before req
@@ -373,17 +364,6 @@ rpcc::got_reply(unmarshall &rep)
 
   assert(pthread_mutex_lock(&ca->m) == 0);
 
-#ifdef VIVALDI
-  if (ca->senttime > 0.0) {
-   Coord c;
-   rep >> c;
-   assert(_vivaldi);
-   double now = vivaldi::gettime();
-   _vivaldi->update_other_coords(ca->other_ip, ca->other_port, c);
-   _vivaldi->update_other_lat (ca->other_ip, now - ca->senttime);
-   _vivaldi->update_coords(c, now - ca->senttime);
-  }
-#endif
   rep >> intret;
   ca->un->str(rep.istr());
   ca->intret = intret;
@@ -605,12 +585,6 @@ rpcs::dispatch(junk *j)
   ret = h->fn(args, rep);
     
   rep1 << xid;
-#ifdef VIVALDI
-  if (proc & rpc_const::VIVALDI_MASK) {
-    assert(_vivaldi);
-    rep1 << _vivaldi->my_coords();
-  }
-#endif
   rep1 << ret;
   rep1 << rep.str();
 

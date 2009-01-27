@@ -11,9 +11,9 @@
 int nt = 10;
 std::string dst;
 lock_client **lc = new lock_client * [nt];
-std::string a = std::string("a");
-std::string b = std::string("b");
-std::string c = std::string("c");
+lock_protocol::lockid_t a = 1;
+lock_protocol::lockid_t b = 2;
+lock_protocol::lockid_t c = 3;
 
 // check_grant() and check_release() check that the lock server
 // doesn't grant the same lock to both clients.
@@ -21,31 +21,14 @@ std::string c = std::string("c");
 int ct[256];
 pthread_mutex_t count_mutex;
 
-// convert a bit-string to a hex string for debug printouts.
-std::string
-hex(std::string s)
-{
-  char buf[64];
-  unsigned int len = s.length();
-  const char *p = s.c_str();
-  unsigned int i;
-
-  buf[0] = '\0';
-  for(i = 0; i < len && i*2+1 < sizeof(buf); i++){
-    sprintf(buf + (i * 2), "%02x", p[i] & 0xff);
-  }
-  
-  return std::string(buf);
-}
-
 void
-check_grant(std::string name)
+check_grant(lock_protocol::lockid_t lid)
 {
   pthread_mutex_lock(&count_mutex);
-  int x = name.c_str()[0] & 0xff;
+  int x = lid & 0xff;
   if(ct[x] != 0){
-    fprintf(stderr, "error: server granted %s twice\n", hex(name).c_str());
-    fprintf(stdout, "error: server granted %s twice\n", hex(name).c_str());
+    fprintf(stderr, "error: server granted %016llx twice\n", lid);
+    fprintf(stdout, "error: server granted %016llx twice\n", lid);
     exit(1);
   }
   ct[x] += 1;
@@ -53,13 +36,12 @@ check_grant(std::string name)
 }
 
 void
-check_release(std::string name)
+check_release(lock_protocol::lockid_t lid)
 {
   pthread_mutex_lock(&count_mutex);
-  int x = name.c_str()[0] & 0xff;
+  int x = lid & 0xff;
   if(ct[x] != 1){
-    fprintf(stderr, "error: client released un-held lock %s\n", 
-	    hex(name).c_str());
+    fprintf(stderr, "error: client released un-held lock %016llx\n",  lid);
     exit(1);
   }
   ct[x] -= 1;
