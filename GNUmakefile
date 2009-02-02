@@ -1,5 +1,5 @@
-LAB=5
-SOL=5
+LAB=1
+SOL=1
 LAB4GE=$(shell expr $(LAB) \>\= 4)
 LAB5GE=$(shell expr $(LAB) \>\= 5)
 LAB6GE=$(shell expr $(LAB) \>\= 6)
