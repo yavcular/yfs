@@ -26,6 +26,7 @@ rpcc::rpcc(sockaddr_in _dst, bool _debug)
   _next_timeout.tv_sec = 0;
 
   // Create a thread that runs clock_loop to enable retransmissions
+  // ** YOU FILL THIS IN FOR LAB 1 **
 
   if((th_chan_loop = method_thread(this, false, &rpcc::chan_loop)) == 0){
     perror("rpcc::rpcc pthread_create");
@@ -530,8 +531,6 @@ rpcs::dispatch(junk *j)
   unmarshall args(req.istr());
   marshall rep;
   marshall rep1;
-  bool old;
-  bool rep_present;
   int ret;
   handler *h;
 
@@ -562,35 +561,30 @@ rpcs::dispatch(junk *j)
     goto exit;
   }
 
-  if (checkduplicate_and_update(clt_nonce, xid, rep_xid, old, rep_present, 
-        rep1)) {
-    if (old) { // very old request; don't have response anymore
-      if (debug) 
-        printf("very old request %u from %u\n", xid, clt_nonce);
-      rep1 << xid;
-      rep1 << rpc_const::atmostonce_failure;
-      chan.send(rep1.str(), channo);
-    } else if (rep_present) { // duplicate and we still have the response 
-      chan.send(rep1.str(), channo);
-    } else {
-      // server is working on this request
-    }
-    goto exit;
+  switch (checkduplicate_and_update(clt_nonce, xid, rep_xid, rep1)) {
+  case NEW: // this is a new request
+    if (counting)
+      updatestat(proc);
+    ret = h->fn(args, rep);
+    rep1 << xid;
+    rep1 << ret;
+    rep1 << rep.str();
+    add_reply(clt_nonce, xid, rep1);
+    chan.send(rep1.str(), channo);
+    break;
+  case INPROGRESS: // server is working on this request
+    break;
+  case DONE: // duplicate and we still have the response 
+    chan.send(rep1.str(), channo);
+    break;
+  case FORGOTTEN: // very old request; don't have response anymore
+    if (debug) 
+      printf("very old request %u from %u\n", xid, clt_nonce);
+    rep1 << xid;
+    rep1 << rpc_const::atmostonce_failure;
+    chan.send(rep1.str(), channo);
+    break;
   }
-
-  if (counting) { 
-    updatestat(proc);
-  }
-
-  ret = h->fn(args, rep);
-    
-  rep1 << xid;
-  rep1 << ret;
-  rep1 << rep.str();
-
-  add_reply(clt_nonce, xid, rep1);
-      
-  chan.send(rep1.str(), channo);
 
  exit:
   dec_nthread();
@@ -600,13 +594,11 @@ rpcs::dispatch(junk *j)
 void rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
              marshall &rep)
 {
-  std::list<reply_t *>::iterator it;
-
   assert(pthread_mutex_lock(&reply_window_m) == 0);
 
   // remember the reply for this xid.
+  // ** YOU FILL THIS IN FOR LAB 1 **
 
- release:
   assert(pthread_mutex_unlock(&reply_window_m) == 0);
 }
 
@@ -627,18 +619,18 @@ rpcs::free_reply_window(void)
   assert(pthread_mutex_unlock(&reply_window_m) == 0);
 }
 
-bool rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid, 
-             unsigned int xid_rep, bool &old, 
-             bool &rep_present, marshall &rep)
+rpcs::rpcstate_t rpcs::checkduplicate_and_update(unsigned int clt_nonce,
+	     unsigned int xid, unsigned int xid_rep, marshall &rep)
 {
-  std::list<reply_t *>::iterator it;
-  bool r = false;
+  rpcstate_t r;
 
   assert(pthread_mutex_lock(&reply_window_m) == 0);
 
   // check if xid is a duplicate, and if not update list of received xid, so
-  // that checking and update is atomic.  xid_rep tells srv which replies
-  // has received and the server can forget about.
+  // that checking and update is atomic.
+  // fill in xid_rep if we have the reply (state is DONE)
+
+  // ** YOU FILL THIS IN FOR LAB 1 **
 
   assert(pthread_mutex_unlock(&reply_window_m) == 0);
   return r;

@@ -252,9 +252,14 @@ class rpcs {
   std::map<unsigned int, std::list<reply_t *> > reply_window;
   void free_reply_window(void);
   void add_reply(unsigned int clt_nonce, unsigned int xid, marshall &rep);
-  bool checkduplicate_and_update(unsigned int clnt_nonce, 
-         unsigned int xid, unsigned int rep_xid,
-         bool &old, bool &rep_present, marshall &rep);
+  typedef enum {
+    NEW,	// new RPC, not a duplicate
+    INPROGRESS,	// duplicate of an RPC we're still processing
+    DONE,	// duplicate of an RPC we already replied to (have reply)
+    FORGOTTEN,	// duplicate of an old RPC whose reply we've forgotten
+  } rpcstate_t;
+  rpcstate_t checkduplicate_and_update(unsigned int clnt_nonce, 
+         unsigned int xid, unsigned int rep_xid, marshall &rep);
 
   // counting
   int counting;
