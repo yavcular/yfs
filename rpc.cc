@@ -622,7 +622,7 @@ rpcs::free_reply_window(void)
 rpcs::rpcstate_t rpcs::checkduplicate_and_update(unsigned int clt_nonce,
 	     unsigned int xid, unsigned int xid_rep, marshall &rep)
 {
-  rpcstate_t r;
+  rpcstate_t r = NEW;
 
   assert(pthread_mutex_lock(&reply_window_m) == 0);
 
