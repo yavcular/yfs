@@ -7,6 +7,7 @@
 #include "rpc.h"
 #include <arpa/inet.h>
 #include <vector>
+#include <stdlib.h>
 
 int nt = 10;
 std::string dst;
@@ -61,7 +62,7 @@ test1(void)
     lc[0]->release(a);
     check_release(a);
 
-    printf ("acquire a acquire b release b releasea \n");
+    printf ("acquire a acquire b release b release a\n");
     lc[0]->acquire(a);
     check_grant(a);
     lc[0]->acquire(b);
@@ -110,11 +111,11 @@ test4(void *x)
 {
   int i = * (int *) x;
 
-  printf ("test4: client %d acquire a release a concurrent; same clnt\n", i);
+  printf ("test4: thread %d acquire a release a concurrent; same clnt\n", i);
   for (int j = 0; j < 10; j++) {
     lc[0]->acquire(a);
     check_grant(a);
-    printf ("test4: client %d got lock\n", i);
+    printf ("test4: thread %d on client 0 got lock\n", i);
     check_release(a);
     lc[0]->release(a);
   }
