@@ -5,7 +5,11 @@ LAB5GE=$(shell expr $(LAB) \>\= 5)
 LAB6GE=$(shell expr $(LAB) \>\= 6)
 CXXFLAGS =  -g -MD -Wall -DLAB=$(LAB) -DSOL=$(SOL) -D_FILE_OFFSET_BITS=64
 FUSEFLAGS= -D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=25 -I/usr/local/include/fuse -I/usr/include/fuse
+ifeq ($(shell uname -s),Darwin)
 MACFLAGS= -D__FreeBSD__=10
+else
+MACFLAGS=
+endif
 LDFLAGS = -L. -L/usr/local/lib
 LDLIBS = -lrpc -lfuse -lpthread
 CC = g++
