@@ -9,6 +9,7 @@
 #include <fuse_lowlevel.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
