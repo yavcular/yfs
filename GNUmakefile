@@ -1,5 +1,5 @@
-LAB=1
-SOL=1
+LAB=2
+SOL=2
 LAB4GE=$(shell expr $(LAB) \>\= 4)
 LAB5GE=$(shell expr $(LAB) \>\= 5)
 LAB6GE=$(shell expr $(LAB) \>\= 6)
@@ -11,6 +11,7 @@ LDLIBS = -lrpc -lfuse -lpthread
 CC = g++
 CXX = g++
 
+lab:  lab2
 lab1: rpctest lock_server lock_tester lock_demo
 lab2: yfs_client extent_server
 lab3: yfs_client extent_server
