@@ -11,13 +11,13 @@ LDLIBS = -lrpc -lfuse -lpthread
 CC = g++
 CXX = g++
 
-lab1: librpc.a rpctest lock_server lock_tester lock_demo
-lab2: librpc.a yfs_client extent_server
-lab3: librpc.a yfs_client extent_server
-lab4: librpc.a yfs_client extent_server lock_server test-lab-4-b test-lab-4-c
-lab5: librpc.a yfs_client extent_server lock_server lock_tester test-lab-4-b\
+lab1: rpctest lock_server lock_tester lock_demo
+lab2: yfs_client extent_server
+lab3: yfs_client extent_server
+lab4: yfs_client extent_server lock_server test-lab-4-b test-lab-4-c
+lab5: yfs_client extent_server lock_server lock_tester test-lab-4-b\
 	 test-lab-4-c
-lab6: librpc.a yfs_client extent_server lock_server test-lab-4-b test-lab-4-c
+lab6: yfs_client extent_server lock_server test-lab-4-b test-lab-4-c
 
 hfiles1=fifo.h chan.h host.h rpc.h marshall.h method_thread.h lock_protocol.h\
 	 lock_server.h lock_client.h
@@ -30,22 +30,22 @@ librpc.a: $(patsubst %.cc,%.o,$(rpclib))
 	ranlib librpc.a
 
 rpctest=rpctest.cc
-rpctest: $(patsubst %.cc,%.o,$(rpctest))
+rpctest: $(patsubst %.cc,%.o,$(rpctest)) librpc.a
 
 lock_demo=lock_demo.cc lock_client.cc
-lock_demo : $(patsubst %.cc,%.o,$(lock_demo))
+lock_demo : $(patsubst %.cc,%.o,$(lock_demo)) librpc.a
 
 lock_tester=lock_tester.cc lock_client.cc
 ifeq ($(LAB5GE),1)
 lock_tester += lock_client_cache.cc
 endif
-lock_tester : $(patsubst %.cc,%.o,$(lock_tester))
+lock_tester : $(patsubst %.cc,%.o,$(lock_tester)) librpc.a
 
 lock_server=lock_server.cc lock_smain.cc
 ifeq ($(LAB5GE),1)
 lock_server+=lock_server_cache.cc
 endif
-lock_server : $(patsubst %.cc,%.o,$(lock_server))
+lock_server : $(patsubst %.cc,%.o,$(lock_server)) librpc.a
 
 yfs_client=yfs_client.cc extent_client.cc fuse.cc
 ifeq ($(LAB4GE),1)
@@ -54,16 +54,16 @@ endif
 ifeq ($(LAB5GE),1)
 yfs_client += lock_client_cache.cc
 endif
-yfs_client : $(patsubst %.cc,%.o,$(yfs_client))
+yfs_client : $(patsubst %.cc,%.o,$(yfs_client)) librpc.a
 
 extent_server=extent_server.cc extent_smain.cc
-extent_server : $(patsubst %.cc,%.o,$(extent_server))
+extent_server : $(patsubst %.cc,%.o,$(extent_server)) librpc.a
 
 test-lab-4-b=test-lab-4-b.c
-test-lab-4-b:  $(patsubst %.c,%.o,$(test_lab_4-b))
+test-lab-4-b:  $(patsubst %.c,%.o,$(test_lab_4-b)) librpc.a
 
 test-lab-4-c=test-lab-4-c.c
-test-lab-4-c:  $(patsubst %.c,%.o,$(test_lab_4-c))
+test-lab-4-c:  $(patsubst %.c,%.o,$(test_lab_4-c)) librpc.a
 
 fuse.o: fuse.cc
 	$(CXX) -c $(CXXFLAGS) $(FUSEFLAGS) $(MACFLAGS) $<
