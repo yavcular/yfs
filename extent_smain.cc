@@ -2,6 +2,7 @@
 
 #include "rpc.h"
 #include <arpa/inet.h>
+#include <stdlib.h>
 #include "extent_server.h"
 
 int
