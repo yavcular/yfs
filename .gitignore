@@ -5,3 +5,4 @@ lock_demo
 lock_server
 lock_tester
 rpctest
+*.swp
