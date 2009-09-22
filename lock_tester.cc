@@ -128,7 +128,6 @@ test5(void *x)
 
   printf ("test5: client %d acquire a release a concurrent; same and diff clnt\n", i);
   for (int j = 0; j < 10; j++) {
-    printf("client %d acquiring\n", i);
     if (i < 5)  lc[0]->acquire(a);
     else  lc[1]->acquire(a);
     check_grant(a);

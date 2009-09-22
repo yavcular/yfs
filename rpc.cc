@@ -27,6 +27,10 @@ rpcc::rpcc(sockaddr_in _dst, bool _debug)
 
   // Create a thread that runs clock_loop to enable retransmissions
   // ** YOU FILL THIS IN FOR LAB 1 **
+  if ((th_clock_loop = method_thread(this, false, &rpcc::clock_loop)) == 0) {
+    perror("rpcc::rpcc pthread_create");
+    exit(1);
+  }
 
   if((th_chan_loop = method_thread(this, false, &rpcc::chan_loop)) == 0){
     perror("rpcc::rpcc pthread_create");
@@ -398,6 +402,8 @@ void rpcc::update_xid_rep(unsigned int xid)
   xid_rep_window.push_back(xid);
 
  compress:
+  // removes any continous natural sequence, leaving the last item in the
+  // sequence, e.g., 0, 1, 2, 5, 8 ---(removing 0 and 1) --> 2, 5, 8
   it = xid_rep_window.begin();
   for (it++; it != xid_rep_window.end(); it++) {
     if (xid_rep_window.front() + 1 == *it)
@@ -599,6 +605,17 @@ void rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
   // remember the reply for this xid.
   // ** YOU FILL THIS IN FOR LAB 1 **
 
+  std::list<reply_t *> &replies = reply_window[clt_nonce];
+  std::list<reply_t *>::iterator itr = replies.begin();
+  while (itr != replies.end()) {
+    if ( (*itr)->xid == xid) {
+      (*itr)->rep_present = true;
+      (*itr)->rep = rep;
+      break;
+    }
+    ++itr;
+  }
+
   assert(pthread_mutex_unlock(&reply_window_m) == 0);
 }
 
@@ -622,6 +639,10 @@ rpcs::free_reply_window(void)
 rpcs::rpcstate_t rpcs::checkduplicate_and_update(unsigned int clt_nonce,
 	     unsigned int xid, unsigned int xid_rep, marshall &rep)
 {
+  // xid: the xid of the incoming rpc request
+  // xid_rep: ack the client has received all replies whose xid <= xid_rep (meaning
+  // we can safely move the sliding window forward to xid_rep
+
   rpcstate_t r = NEW;
 
   assert(pthread_mutex_lock(&reply_window_m) == 0);
@@ -632,6 +653,39 @@ rpcs::rpcstate_t rpcs::checkduplicate_and_update(unsigned int clt_nonce,
 
   // ** YOU FILL THIS IN FOR LAB 1 **
 
+  std::list<reply_t *> &replies = reply_window[clt_nonce];
+  std::list<reply_t *>::iterator it;
+
+  if (!replies.empty() && xid <= replies.front()->xid) {
+    r = FORGOTTEN;
+    goto out;
+  }
+
+  for (it = replies.begin(); it != replies.end(); it++) {
+    if ((*it)->xid == xid) {
+      // this xid is a duplicate
+      if ( (*it)->rep_present) {
+        r = DONE;
+      } else {
+        r = INPROGRESS;
+      }
+      goto out;
+    } else if ( (*it)->xid > xid) {
+      replies.insert(it, new reply_t(xid));
+      goto compress;
+    }
+  }
+  replies.push_back(new reply_t(xid));
+
+compress:
+  // Safely removes all those items whose id < xid_rep to make it
+  // comply with the xid_rep_window on client
+  it = replies.begin();
+  while (replies.front()->xid < xid_rep) {
+    replies.pop_front();
+  }
+
+out:
   assert(pthread_mutex_unlock(&reply_window_m) == 0);
   return r;
 }

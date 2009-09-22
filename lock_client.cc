@@ -16,8 +16,6 @@ lock_client::lock_client(std::string dst)
   if (cl->bind() < 0) {
     printf("lock_client: call bind\n");
   }
-
-  pthread_mutex_init(&_mutex, NULL);
 }
 
 int
@@ -32,22 +30,18 @@ lock_client::stat(lock_protocol::lockid_t lid)
 int
 lock_client::acquire(lock_protocol::lockid_t lid)
 {
-  pthread_mutex_lock(&_mutex);
   int r;
   int ret = cl->call(lock_protocol::acquire, lid, r);
   assert (ret == lock_protocol::OK);
-  pthread_mutex_unlock(&_mutex);
   return r; 
 }
 
 int
 lock_client::release(lock_protocol::lockid_t lid)
 {
-  pthread_mutex_lock(&_mutex);
   int r;
   int ret = cl->call(lock_protocol::release, lid, r);
   assert (ret == lock_protocol::OK);
-  pthread_mutex_unlock(&_mutex);
   return r;
 }
 

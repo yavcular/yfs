@@ -10,8 +10,6 @@
 
 // Client interface to the lock server
 class lock_client {
- private:
-  pthread_mutex_t _mutex;
  protected:
   rpcc *cl;
  public:
