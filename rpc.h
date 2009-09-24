@@ -6,6 +6,8 @@
 #include <netinet/in.h>
 #include <map>
 #include <list>
+#include <cstring>
+#include <cstdlib>
 #include "marshall.h"
 #include "chan.h"
 
