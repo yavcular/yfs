@@ -23,7 +23,7 @@ hfiles1=fifo.h chan.h host.h rpc.h marshall.h method_thread.h lock_protocol.h\
 	 lock_server.h lock_client.h
 hfiles2=yfs_client.h extent_client.h extent_protocol.h extent_server.h
 
-rpclib=rpc.cc host.cc chan.cc
+rpclib=rpc.cc host.cc chan.cc log.cc
 librpc.a: $(patsubst %.cc,%.o,$(rpclib))
 	rm -f $@
 	ar cq $@ $^

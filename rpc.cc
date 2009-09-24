@@ -48,7 +48,6 @@ rpcc::rpcc(sockaddr_in _dst, bool _debug)
   if (debug) printf("rpcc: my nonce %d\n", clt_nonce);
 }
 
-
 rpcc::~rpcc()
 {
   if (debug) printf("~rpcc\n");
@@ -179,9 +178,12 @@ rpcc::call1(unsigned int proc, const marshall &req, unmarshall &rep, TO to)
 {
   assert (pthread_mutex_lock(&m) == 0);
 
-  if ((proc != rpc_const::bind && !bind_done) || 
-      (proc == rpc_const::bind && bind_done)) {
-    fprintf(stderr, "rpcc::call1 rpcc has not been bound to server or binding twice\n");
+  if (proc != rpc_const::bind && !bind_done) {
+    fprintf(stderr, "rpcc::call1 rpcc has not been bound to server\n");
+    assert (pthread_mutex_unlock(&m) == 0);
+    return rpc_const::bind_failure;
+  } else if (proc == rpc_const::bind && bind_done) {
+    fprintf(stderr, "rpcc::call1 rpcc has been bound twice\n");
     assert (pthread_mutex_unlock(&m) == 0);
     return rpc_const::bind_failure;
   }
@@ -227,8 +229,8 @@ rpcc::call1(unsigned int proc, const marshall &req, unmarshall &rep, TO to)
     if(diff_msec >= rto || next_rto == initial_rto){
       rto = next_rto;
       if(rto != initial_rto)
-        if (debug) printf("rpcc::call1 retransmit proc %x xid %d %s:%d\n", 
-                proc, myxid,
+        if (debug) printf("<%u> rpcc::call1 retransmit proc %x xid %d %s:%d\n", 
+                clt_nonce, proc, myxid,
                 inet_ntoa(dst.sin_addr),
                 ntohs(dst.sin_port));
       chan.send(m1.str());
@@ -576,6 +578,10 @@ rpcs::dispatch(junk *j)
     rep1 << ret;
     rep1 << rep.str();
     add_reply(clt_nonce, xid, rep1);
+    // note that send() may fail in lossy environment,
+    // but it is okay to ignore this fault because even if rpcs fails
+    // to send the data to the client, the latter would notice a response
+    // timeout, and hence do a re-transmission.
     chan.send(rep1.str(), channo);
     break;
   case INPROGRESS: // server is working on this request
@@ -641,7 +647,8 @@ rpcs::rpcstate_t rpcs::checkduplicate_and_update(unsigned int clt_nonce,
 {
   // xid: the xid of the incoming rpc request
   // xid_rep: ack the client has received all replies whose xid <= xid_rep (meaning
-  // we can safely move the sliding window forward to xid_rep
+  // we can safely move the sliding window forward to xid_rep, and
+  // we SHOULD ignore requests whose xid < xid_rep
 
   rpcstate_t r = NEW;
 
@@ -656,36 +663,50 @@ rpcs::rpcstate_t rpcs::checkduplicate_and_update(unsigned int clt_nonce,
   std::list<reply_t *> &replies = reply_window[clt_nonce];
   std::list<reply_t *>::iterator it;
 
-  if (!replies.empty() && xid <= replies.front()->xid) {
+  if (!replies.empty() && xid < replies.front()->xid) {
     r = FORGOTTEN;
-    goto out;
-  }
-
-  for (it = replies.begin(); it != replies.end(); it++) {
-    if ((*it)->xid == xid) {
-      // this xid is a duplicate
-      if ( (*it)->rep_present) {
-        r = DONE;
-      } else {
-        r = INPROGRESS;
+  } else {
+    // check if this xid already exists
+    for (it = replies.begin(); it != replies.end(); it++) {
+      if ((*it)->xid == xid) {
+        // this xid is a duplicate
+        if ( (*it)->rep_present) {
+          r = DONE;
+          rep = (*it)->rep;
+        } else {
+          r = INPROGRESS;
+        }
+        break;
+      } else if ( (*it)->xid > xid) {
+        // since replies are placed in monotonically increasing order,
+        // if we are reaching here, it means 
+        replies.insert(it, new reply_t(xid));
+        break;
       }
-      goto out;
-    } else if ( (*it)->xid > xid) {
-      replies.insert(it, new reply_t(xid));
-      goto compress;
+    }
+
+    if (r == NEW) {
+      replies.push_back(new reply_t(xid));
+
+      // Safely removes all those items whose id < xid_rep to make it
+      // comply with the xid_rep_window on client
+
+      reply_t *head;
+      // the reason why we use "<" instead of "<=" here:
+      // suppose xid_rep_window on the client side contains 3, 5, 6.
+      // the client would send a request to the server with xid_rep being 3.
+      // if we used "<=" in the statement below, reply_window on the server side
+      // would possibly be "5, 6, 7", assuming the request of xid 4 from the
+      // client hadn't reached the server. Now consider the situation that the
+      // request of xid 4 reaches the server. According the logic, it would be
+      // recognized by the server as FORGOTTEN, which is obviously undesirable.
+      while ((head = replies.front())->xid < xid_rep) {
+        delete head;
+        replies.pop_front();
+      }
     }
   }
-  replies.push_back(new reply_t(xid));
 
-compress:
-  // Safely removes all those items whose id < xid_rep to make it
-  // comply with the xid_rep_window on client
-  it = replies.begin();
-  while (replies.front()->xid < xid_rep) {
-    replies.pop_front();
-  }
-
-out:
   assert(pthread_mutex_unlock(&reply_window_m) == 0);
   return r;
 }
